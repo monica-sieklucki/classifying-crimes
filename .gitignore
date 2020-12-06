@@ -6,3 +6,6 @@
 
 # ignoring system-generated files
 .DS_Store
+
+# ignoring the data/filtered-crime-data.csv file because github can't handle its size and this project is on a $0.00 budget.
+data/filtered-crime-data.csv
