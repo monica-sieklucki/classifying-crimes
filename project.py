@@ -3,9 +3,7 @@ import sys
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
-from pandas import DataFrame
 
-#pd.set_option('display.max_columns', None)
 from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
@@ -73,50 +71,10 @@ def strip_block_numbers(data_frame):
     return data_frame
 
 
-def encode_description(data_frame):
-    column_encoded = pd.get_dummies(data_frame.Description, prefix="Description")
-    # remove the old `Description` column from the received data_frame
-    data_frame = data_frame.drop(columns=["Description"], axis=1)
-    encoded_df = pd.merge(data_frame, column_encoded, left_index=True, right_index=True)
-    return encoded_df
-
-
-def encode_location_description(data_frame):
-    column_encoded = pd.get_dummies(data_frame["Location Description"], prefix="Location Description")
+def encode_column(data_frame, column_name):
+    column_encoded = pd.get_dummies(data_frame[column_name], prefix=column_name)
     # remove the old `Location Description` column from the received data_frame
-    data_frame = data_frame.drop(columns=["Location Description"], axis=1)
-    encoded_df = pd.merge(data_frame, column_encoded, left_index=True, right_index=True)
-    return encoded_df
-
-
-def encode_arrest(data_frame):
-    column_encoded = pd.get_dummies(data_frame["Arrest"], prefix="Arrest")
-    # remove the old `Location Description` column from the received data_frame
-    data_frame = data_frame.drop(columns=["Arrest"], axis=1)
-    encoded_df = pd.merge(data_frame, column_encoded, left_index=True, right_index=True)
-    return encoded_df
-
-
-def encode_domestic(data_frame):
-    column_encoded = pd.get_dummies(data_frame["Domestic"], prefix="Domestic")
-    # remove the old `Domestic` column from the received data_frame
-    data_frame = data_frame.drop(columns=["Domestic"], axis=1)
-    encoded_df = pd.merge(data_frame, column_encoded, left_index=True, right_index=True)
-    return encoded_df
-
-
-def encode_ward(data_frame):
-    column_encoded = pd.get_dummies(data_frame["Ward"], prefix="Ward")
-    # remove the old `Location Description` column from the received data_frame
-    data_frame = data_frame.drop(columns=["Ward"], axis=1)
-    encoded_df = pd.merge(data_frame, column_encoded, left_index=True, right_index=True)
-    return encoded_df
-
-
-def encode_block(data_frame):
-    column_encoded = pd.get_dummies(data_frame["Block"], prefix="Block")
-    # remove the old `Location Description` column from the received data_frame
-    data_frame = data_frame.drop(columns=["Block"], axis=1)
+    data_frame = data_frame.drop(columns=[column_name], axis=1)
     encoded_df = pd.merge(data_frame, column_encoded, left_index=True, right_index=True)
     return encoded_df
 
@@ -126,12 +84,10 @@ def encode(data_frame):
     data_frame = strip_block_numbers(data_frame)
 
     # on-hot-encode
-    data_frame = encode_description(data_frame)
-    data_frame = encode_location_description(data_frame)
-    data_frame = encode_arrest(data_frame)
-    data_frame = encode_domestic(data_frame)
-    data_frame = encode_ward(data_frame)
-    data_frame = encode_block(data_frame)
+    column_names = ["Description", "Location Description", "Arrest", "Domestic", "Ward", "Block"]
+
+    for column_name in column_names:
+        data_frame = encode_column(data_frame, column_name)
 
     return data_frame
 
@@ -202,29 +158,18 @@ def main():
     # store the filtered dataset (not necessary, but useful  JiC).
     df.to_csv(index=False, path_or_buf="data/filtered-crime-data.csv")
 
-    unlabeled_crime_dataset = extract_unlabeled_data(df, "Primary Type")
-    crime_dataset_label_values = extract_target_label_values(df, "Primary Type")
+    unlabeled_crime_dataset = extract_unlabeled_data(df.head(1000), "Primary Type")
+    crime_dataset_label_values = extract_target_label_values(df.head(1000), "Primary Type")
 
-    # Split data into train, develop, and test subsets
+    # Split data into train, develop, and test subsets for trainin/testing the baseline model
     X_train, X_develop, X_test, y_train, y_develop, y_test = split_into_train_develop_test(unlabeled_crime_dataset, crime_dataset_label_values)
 
     # Establishing a baseline performance using Sklearn's DummyClassifier with strategy=stratified and most_frequent:
     predict_with_baseline_dummy_model("stratified", X_train, y_train, X_develop)
     predict_with_baseline_dummy_model("most_frequent", X_train, y_train, X_develop)
 
-    # print(df.head())
 
-
-
-
-
-
-
-
-
-
-
-    #Performing fitting
+    #Performing fitting. Splitting dataset for training ad testing the actual model
     training_data, testing_data, training_labels, testing_labels = train_test_split(unlabeled_crime_dataset, crime_dataset_label_values, test_size=0.33, random_state=42)
 
     #teaching the model
@@ -233,12 +178,6 @@ def main():
 
     #make predictions
     predictions = model.predict(testing_data)
-
-    #Printing survival predictions for each passenger.
-    print('\n---------------------------------- RESULTS -----------------------------\n')
-    print('---------------------------------- Prediction Results: -----------------------------')
-    print('Below is a matrix of the predictions for each passenger in the dataset.')
-    print(predictions)
 
     #guaging how good our model performed
     print('---------------------------------- Prediction Accuracy: -----------------------------')
